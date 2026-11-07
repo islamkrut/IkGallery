@@ -45,9 +45,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3")
     
-    // Coil для загрузки и отображения изображений
+    // Coil для загрузки изображений
     implementation("io.coil-kt:coil-compose:2.5.0")
     
-    // CanHub Android Image Cropper для кадрирования/обрезания
-    implementation("com.github.canhub:android-image-cropper:4.5.0")
+    // Android Image Cropper
+    implementation("com.canhub:android-image-cropper:4.5.0")
 }
