@@ -10,7 +10,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://jitpack.io") // Добавили репозиторий для библиотеки обрезки
     }
 }
 rootProject.name = "IK-Gallery"
