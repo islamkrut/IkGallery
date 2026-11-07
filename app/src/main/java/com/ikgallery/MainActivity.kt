@@ -19,11 +19,13 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
 
 class MainActivity : ComponentActivity() {
@@ -48,14 +50,13 @@ class MainActivity : ComponentActivity() {
         permissionLauncher.launch(permission)
 
         setContent {
-            // Кастомная розовая тема (Pink Palette)
             MaterialTheme(
                 colorScheme = lightColorScheme(
                     primary = Color(0xFFE91E63),
                     onPrimary = Color.White,
                     primaryContainer = Color(0xFFF8BBD0),
                     secondary = Color(0xFFAD1457),
-                    background = Color(0xFFFFF0F5),
+                    background = Color(0xFFFFE4E1),
                     surface = Color.White,
                     onSurface = Color(0xFF880E4F)
                 )
@@ -68,7 +69,28 @@ class MainActivity : ComponentActivity() {
                         topBar = {
                             @OptIn(ExperimentalMaterial3Api::class)
                             TopAppBar(
-                                title = { Text("💖 IK-Gallery") },
+                                title = { 
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        // Круглый значок-логотип в шапке
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(Color(0xFFFFB6C1)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("🍩", style = MaterialTheme.typography.titleMedium)
+                                        }
+                                        Text(
+                                            "IK-Gallery",
+                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                },
                                 colors = TopAppBarDefaults.topAppBarColors(
                                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                                     titleContentColor = MaterialTheme.colorScheme.secondary
@@ -82,14 +104,15 @@ class MainActivity : ComponentActivity() {
                                 .padding(padding)
                                 .fillMaxSize()
                                 .background(MaterialTheme.colorScheme.background),
-                            contentPadding = PaddingIdentifiers.gridPadding()
+                            contentPadding = PaddingValues(8.dp)
                         ) {
                             items(photosState) { uri ->
                                 Box(
                                     modifier = Modifier
                                         .padding(4.dp)
                                         .aspectRatio(1f)
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(Color.White)
                                         .clickable {
                                             val intent = Intent(this@MainActivity, EditorActivity::class.java).apply {
                                                 putExtra("imageUri", uri.toString())
@@ -110,10 +133,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private object PaddingIdentifiers {
-        fun gridPadding() = PaddingValues(8.dp)
     }
 
     private fun loadImages() {
