@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.canhub.cropper.CropImageContract
@@ -71,7 +72,7 @@ class EditorActivity : ComponentActivity() {
                     onPrimary = Color.White,
                     primaryContainer = Color(0xFFF8BBD0),
                     secondary = Color(0xFFAD1457),
-                    background = Color(0xFFFFE4E1), // Нежно-розовый
+                    background = Color(0xFFFFE4E1),
                     surface = Color.White,
                     onSurface = Color(0xFF880E4F),
                     error = Color(0xFFD32F2F)
@@ -81,7 +82,6 @@ class EditorActivity : ComponentActivity() {
                 var showTextDialog by remember { mutableStateOf(false) }
                 var showDeleteDialog by remember { mutableStateOf(false) }
 
-                // Состояния для зума и перемещения фото пальцами
                 var scale by remember { mutableStateOf(1f) }
                 var offsetX by remember { mutableStateOf(0f) }
                 var offsetY by remember { mutableStateOf(0f) }
@@ -92,7 +92,6 @@ class EditorActivity : ComponentActivity() {
                     offsetY += offsetChange.y
                 }
 
-                // Диалог ввода текста
                 if (showTextDialog) {
                     AlertDialog(
                         onDismissRequest = { showTextDialog = false },
@@ -132,7 +131,6 @@ class EditorActivity : ComponentActivity() {
                     )
                 }
 
-                // Диалог удаления
                 if (showDeleteDialog) {
                     AlertDialog(
                         onDismissRequest = { showDeleteDialog = false },
@@ -148,7 +146,7 @@ class EditorActivity : ComponentActivity() {
                                             Toast.makeText(this@EditorActivity, "Успешно удалено", Toast.LENGTH_SHORT).show()
                                             finish()
                                         } catch (e: Exception) {
-                                            Toast.makeText(this@EditorActivity, "Ошибка удаления", Toast.JSON_ERROR_FALLBACK)
+                                            Toast.makeText(this@EditorActivity, "Ошибка удаления", Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 }
@@ -169,35 +167,29 @@ class EditorActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Кастомный фон с пончиками и кремушками
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val canvasWidth = size.width
                             val canvasHeight = size.height
                             
-                            // Рисуем узор из пончиков и капель крем-глазури на розовом фоне
                             for (i in 0..12) {
                                 val cx = (i * 190f + 50f) % canvasWidth
                                 val cy = ((i * 130f + 70f) % canvasHeight)
 
-                                // Пончик (основа)
                                 drawCircle(
                                     color = Color(0xFFD2B48C).copy(alpha = 0.5f),
                                     radius = 45f,
                                     center = Offset(cx, cy)
                                 )
-                                // Дырка пончика
                                 drawCircle(
                                     color = Color(0xFFFFE4E1),
                                     radius = 18f,
                                     center = Offset(cx, cy)
                                 )
-                                // Глазурь
                                 drawCircle(
                                     color = Color(0xFFFFB6C1).copy(alpha = 0.7f),
                                     radius = 40f,
                                     center = Offset(cx, cy)
                                 )
-                                // Капля крема рядом
                                 drawCircle(
                                     color = Color.White.copy(alpha = 0.8f),
                                     radius = 18f,
@@ -212,7 +204,6 @@ class EditorActivity : ComponentActivity() {
                                 .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Верхняя панель с кнопкой назад
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Start
@@ -224,7 +215,6 @@ class EditorActivity : ComponentActivity() {
 
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            // Область просмотра фото с поддержкой Pinch-to-Zoom (щипок для зума и панорамирование)
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
@@ -260,7 +250,6 @@ class EditorActivity : ComponentActivity() {
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // Аккуратная нижняя панель с иконками вместо огромных кнопок
                             Card(
                                 shape = RoundedCornerShape(24.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
@@ -274,7 +263,6 @@ class EditorActivity : ComponentActivity() {
                                     horizontalArrangement = Arrangement.SpaceAround,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Кнопка обрезки
                                     IconButton(onClick = {
                                         imageUri?.let { uri ->
                                             try {
@@ -287,12 +275,10 @@ class EditorActivity : ComponentActivity() {
                                         Icon(Icons.Default.Crop, contentDescription = "Обрезать", tint = MaterialTheme.colorScheme.primary)
                                     }
 
-                                    // Кнопка текста
                                     IconButton(onClick = { showTextDialog = true }) {
                                         Icon(Icons.Default.TextFormat, contentDescription = "Текст", tint = MaterialTheme.colorScheme.primary)
                                     }
 
-                                    // Кнопка Ч/Б фильтра
                                     IconButton(onClick = {
                                         currentBitmap?.let { bitmap ->
                                             val width = bitmap.width
@@ -309,7 +295,6 @@ class EditorActivity : ComponentActivity() {
                                         Icon(Icons.Default.AutoFixHigh, contentDescription = "Фильтр", tint = MaterialTheme.colorScheme.primary)
                                     }
 
-                                    // Кнопка удаления
                                     IconButton(onClick = { showDeleteDialog = true }) {
                                         Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error)
                                     }
