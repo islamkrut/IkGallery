@@ -59,6 +59,6 @@ dependencies {
     // Coil для загрузки изображений в галерее
     implementation("io.coil-kt:coil-compose:2.5.0")
     
-    // Android Image Cropper (проверенная стабильная версия)
-    implementation("com.canhub:android-image-cropper:4.3.0")
+    // Правильная координата Android Image Cropper для JitPack
+    implementation("com.github.canhub:Android-Image-Cropper:4.3.0")
 }
