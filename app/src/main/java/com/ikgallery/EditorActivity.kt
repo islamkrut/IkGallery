@@ -6,17 +6,24 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
@@ -27,19 +34,16 @@ class EditorActivity : ComponentActivity() {
     private var currentBitmap by mutableStateOf<Bitmap?>(null)
     private var imageUri: Uri? = null
 
-    // Безопасный контракт обрезки с обработкой ошибок во избежание вылетов
     private val cropImage = registerForActivityResult(CropImageContract()) { result ->
         if (result.isSuccessful) {
             result.uriContent?.let { uri ->
                 try {
                     imageUri = uri
-                    val inputStream = contentResolver.openInputStream(uri)
-                    inputStream?.let {
+                    contentResolver.openInputStream(uri)?.use {
                         currentBitmap = BitmapFactory.decodeStream(it)
-                        it.close()
                     }
                 } catch (e: Exception) {
-                    Toast.makeText(this, "Ошибка загрузки обрезанного фото", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Ошибка загрузки фото", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -52,10 +56,8 @@ class EditorActivity : ComponentActivity() {
 
         imageUri?.let { uri ->
             try {
-                val inputStream = contentResolver.openInputStream(uri)
-                inputStream?.let {
+                contentResolver.openInputStream(uri)?.use {
                     currentBitmap = BitmapFactory.decodeStream(it)
-                    it.close()
                 }
             } catch (e: Exception) {
                 Toast.makeText(this, "Не удалось открыть изображение", Toast.LENGTH_SHORT).show()
@@ -69,15 +71,68 @@ class EditorActivity : ComponentActivity() {
                     onPrimary = Color.White,
                     primaryContainer = Color(0xFFF8BBD0),
                     secondary = Color(0xFFAD1457),
-                    background = Color(0xFFFFF0F5),
+                    background = Color(0xFFFFE4E1), // Нежно-розовый
                     surface = Color.White,
                     onSurface = Color(0xFF880E4F),
                     error = Color(0xFFD32F2F)
                 )
             ) {
                 var textToApply by remember { mutableStateOf("") }
+                var showTextDialog by remember { mutableStateOf(false) }
                 var showDeleteDialog by remember { mutableStateOf(false) }
 
+                // Состояния для зума и перемещения фото пальцами
+                var scale by remember { mutableStateOf(1f) }
+                var offsetX by remember { mutableStateOf(0f) }
+                var offsetY by remember { mutableStateOf(0f) }
+
+                val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
+                    scale = (scale * zoomChange).coerceIn(1f, 5f)
+                    offsetX += offsetChange.x
+                    offsetY += offsetChange.y
+                }
+
+                // Диалог ввода текста
+                if (showTextDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showTextDialog = false },
+                        title = { Text("Добавить текст") },
+                        text = {
+                            OutlinedTextField(
+                                value = textToApply,
+                                onValueChange = { textToApply = it },
+                                label = { Text("Ваш текст") }
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showTextDialog = false
+                                if (textToApply.isNotEmpty() && currentBitmap != null) {
+                                    val mutableBitmap = currentBitmap!!.copy(Bitmap.Config.ARGB_8888, true)
+                                    val canvas = Canvas(mutableBitmap)
+                                    val paint = Paint().apply {
+                                        color = android.graphics.Color.WHITE
+                                        textSize = 80f
+                                        isAntiAlias = true
+                                        setShadowLayer(8f, 4f, 4f, android.graphics.Color.BLACK)
+                                    }
+                                    canvas.drawText(textToApply, 100f, 200f, paint)
+                                    currentBitmap = mutableBitmap
+                                    textToApply = ""
+                                }
+                            }) {
+                                Text("Готово")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showTextDialog = false }) {
+                                Text("Отмена")
+                            }
+                        }
+                    )
+                }
+
+                // Диалог удаления
                 if (showDeleteDialog) {
                     AlertDialog(
                         onDismissRequest = { showDeleteDialog = false },
@@ -93,7 +148,7 @@ class EditorActivity : ComponentActivity() {
                                             Toast.makeText(this@EditorActivity, "Успешно удалено", Toast.LENGTH_SHORT).show()
                                             finish()
                                         } catch (e: Exception) {
-                                            Toast.makeText(this@EditorActivity, "Ошибка удаления", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(this@EditorActivity, "Ошибка удаления", Toast.JSON_ERROR_FALLBACK)
                                         }
                                     }
                                 }
@@ -113,127 +168,153 @@ class EditorActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Область просмотра фото
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color.Black.copy(alpha = 0.05f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            currentBitmap?.let { bitmap ->
-                                Image(
-                                    bitmap = bitmap.asImageBitmap(),
-                                    contentDescription = "Editing",
-                                    modifier = Modifier.fillMaxSize()
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Кастомный фон с пончиками и кремушками
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val canvasWidth = size.width
+                            val canvasHeight = size.height
+                            
+                            // Рисуем узор из пончиков и капель крем-глазури на розовом фоне
+                            for (i in 0..12) {
+                                val cx = (i * 190f + 50f) % canvasWidth
+                                val cy = ((i * 130f + 70f) % canvasHeight)
+
+                                // Пончик (основа)
+                                drawCircle(
+                                    color = Color(0xFFD2B48C).copy(alpha = 0.5f),
+                                    radius = 45f,
+                                    center = Offset(cx, cy)
                                 )
-                            } ?: Text("Нет изображения", color = Color.Gray)
+                                // Дырка пончика
+                                drawCircle(
+                                    color = Color(0xFFFFE4E1),
+                                    radius = 18f,
+                                    center = Offset(cx, cy)
+                                )
+                                // Глазурь
+                                drawCircle(
+                                    color = Color(0xFFFFB6C1).copy(alpha = 0.7f),
+                                    radius = 40f,
+                                    center = Offset(cx, cy)
+                                )
+                                // Капля крема рядом
+                                drawCircle(
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    radius = 18f,
+                                    center = Offset(cx + 55f, cy + 45f)
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = textToApply,
-                            onValueChange = { textToApply = it },
-                            label = { Text("Текст на фото") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Панель инструментов (Кнопки)
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Button(
-                                onClick = {
-                                    imageUri?.let { uri ->
-                                        try {
-                                            cropImage.launch(CropImageContractOptions(uri, CropImageOptions()))
-                                        } catch (e: Exception) {
-                                            Toast.makeText(this@EditorActivity, "Ошибка запуска обрезки", Toast.LENGTH_SHORT).show()
+                            // Верхняя панель с кнопкой назад
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                IconButton(onClick = { finish() }) {
+                                    Icon(Icons.Default.ArrowBack, contentDescription = "Назад", tint = MaterialTheme.colorScheme.secondary)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            // Область просмотра фото с поддержкой Pinch-to-Zoom (щипок для зума и панорамирование)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onDoubleTap = {
+                                                scale = 1f
+                                                offsetX = 0f
+                                                offsetY = 0f
+                                            }
+                                        )
+                                    }
+                                    .transformable(transformState),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                currentBitmap?.let { bitmap ->
+                                    Image(
+                                        bitmap = bitmap.asImageBitmap(),
+                                        contentDescription = "Editing Image",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer(
+                                                scaleX = scale,
+                                                scaleY = scale,
+                                                translationX = offsetX,
+                                                translationY = offsetY
+                                            )
+                                    )
+                                } ?: Text("Нет изображения", color = Color.Gray)
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Аккуратная нижняя панель с иконками вместо огромных кнопок
+                            Card(
+                                shape = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp, horizontal = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceAround,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Кнопка обрезки
+                                    IconButton(onClick = {
+                                        imageUri?.let { uri ->
+                                            try {
+                                                cropImage.launch(CropImageContractOptions(uri, CropImageOptions()))
+                                            } catch (e: Exception) {
+                                                Toast.makeText(this@EditorActivity, "Ошибка обрезки", Toast.LENGTH_SHORT).show()
+                                            }
                                         }
+                                    }) {
+                                        Icon(Icons.Default.Crop, contentDescription = "Обрезать", tint = MaterialTheme.colorScheme.primary)
                                     }
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Обрезать")
-                            }
 
-                            Button(
-                                onClick = {
-                                    if (textToApply.isNotEmpty() && currentBitmap != null) {
-                                        val mutableBitmap = currentBitmap!!.copy(Bitmap.Config.ARGB_8888, true)
-                                        val canvas = Canvas(mutableBitmap)
-                                        val paint = Paint().apply {
-                                            color = android.graphics.Color.WHITE
-                                            textSize = 80f
-                                            isAntiAlias = true
-                                            setShadowLayer(5f, 2f, 2f, android.graphics.Color.BLACK)
+                                    // Кнопка текста
+                                    IconButton(onClick = { showTextDialog = true }) {
+                                        Icon(Icons.Default.TextFormat, contentDescription = "Текст", tint = MaterialTheme.colorScheme.primary)
+                                    }
+
+                                    // Кнопка Ч/Б фильтра
+                                    IconButton(onClick = {
+                                        currentBitmap?.let { bitmap ->
+                                            val width = bitmap.width
+                                            val height = bitmap.height
+                                            val bmpGray = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                                            val canvas = Canvas(bmpGray)
+                                            val paint = Paint()
+                                            val cm = ColorMatrix().apply { setSaturation(0f) }
+                                            paint.colorFilter = ColorMatrixColorFilter(cm)
+                                            canvas.drawBitmap(bitmap, 0f, 0f, paint)
+                                            currentBitmap = bmpGray
                                         }
-                                        canvas.drawText(textToApply, 50f, 150f, paint)
-                                        currentBitmap = mutableBitmap
+                                    }) {
+                                        Icon(Icons.Default.AutoFixHigh, contentDescription = "Фильтр", tint = MaterialTheme.colorScheme.primary)
                                     }
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("+ Текст")
-                            }
-                        }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            // Фильтр Черно-белый
-                            Button(
-                                onClick = {
-                                    currentBitmap?.let { bitmap ->
-                                        val width = bitmap.width
-                                        val height = bitmap.height
-                                        val bmpGrayscale = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                                        val canvas = Canvas(bmpGrayscale)
-                                        val paint = Paint()
-                                        val cm = ColorMatrix().apply { setSaturation(0f) }
-                                        paint.colorFilter = ColorMatrixColorFilter(cm)
-                                        canvas.drawBitmap(bitmap, 0f, 0f, paint)
-                                        currentBitmap = bmpGrayscale
+                                    // Кнопка удаления
+                                    IconButton(onClick = { showDeleteDialog = true }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error)
                                     }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Ч/Б Фильтр")
+                                }
                             }
-
-                            // Кнопка удаления
-                            Button(
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                                onClick = { showDeleteDialog = true },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Удалить")
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Button(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { finish() }
-                        ) {
-                            Text("Назад в галерею")
                         }
                     }
                 }
