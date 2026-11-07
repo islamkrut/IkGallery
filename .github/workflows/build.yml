@@ -18,16 +18,16 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Install Gradle 8.5
+    - name: Setup Gradle Wrapper
       run: |
-        wget https://services.gradle.org/distributions/gradle-8.5-bin.zip
-        unzip -q gradle-8.5-bin.zip
-        echo "$PWD/gradle-8.5/bin" >> $GITHUB_PATH
-
-    - name: Generate Gradle Wrapper
-      run: |
-        gradle wrapper --gradle-version 8.5
-        chmod +x gradlew
+        mkdir -p gradle/wrapper
+        echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
+        echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
+        echo "distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.5-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
+        echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
+        echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
+        gradle wrapper --gradle-version 8.5 || true
+        chmod +x gradlew || true
 
     - name: Build APK
       run: ./gradlew assembleDebug
