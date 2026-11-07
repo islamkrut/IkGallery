@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 Scaffold(
                     topBar = {
-                        SmallTopAppBar(title = { Text("IK-Gallery") })
+                        TopAppBar(title = { Text("IK-Gallery") })
                     }
                 ) { padding ->
                     LazyVerticalGrid(
