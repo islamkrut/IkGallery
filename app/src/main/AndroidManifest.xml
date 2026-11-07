@@ -25,5 +25,4 @@
         <activity android:name=".EditorActivity" />
         <activity android:name="com.canhub.cropper.CropImageActivity" />
     </application>
-
 </manifest>
