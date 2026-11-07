@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
         if (isGranted) loadImages()
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
