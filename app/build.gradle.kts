@@ -56,9 +56,12 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     
+    // Расширенные иконки Material (нужны для кнопок редактора)
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+    
     // Coil для загрузки изображений в галерее
     implementation("io.coil-kt:coil-compose:2.5.0")
     
-    // Правильная координата Android Image Cropper для JitPack
+    // Android Image Cropper для обрезки фото
     implementation("com.github.canhub:Android-Image-Cropper:4.3.0")
 }
